@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Lumi — Internal OS</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --gold: #C4A265;
+  --gold-light: #E8D8B8;
+  --gold-subtle: #FAF5EB;
+  --dark: #111111;
+  --dark-2: #444444;
+  --dark-3: #888888;
+  --border: #E8E8E8;
+  --surface: #F7F7F7;
+  --white: #FFFFFF;
+  --success: #5A9A5A;
+  --success-bg: #EAF3EA;
+  --warning: #C08040;
+  --warning-bg: #FFF4E5;
+  --error: #D04040;
+  --error-bg: #FDEAEA;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; font-size: 14px; color: var(--dark); background: var(--surface); line-height: 1.5; }
+
+/* LAYOUT */
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 232px; min-width: 232px; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { flex: 1; overflow-y: auto; padding: 32px 36px; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar-logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+.logo-mark { width: 32px; height: 32px; background: var(--dark); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; color: var(--gold); font-size: 12px; font-weight: 600; letter-spacing: 0.05em; }
+.logo-text { font-size: 14px; font-weight: 600; color: var(--dark); margin-top: 10px; }
+.logo-sub { font-size: 11px; color: var(--dark-3); margin-top: 2px; }
+
+.nav-section-label { padding: 16px 18px 4px; font-size: 10px; font-weight: 600; color: var(--dark-3); letter-spacing: 0.08em; text-transform: uppercase; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 18px; font-size: 13px; color: var(--dark-2); cursor: pointer; border-left: 2px solid transparent; transition: all 0.12s; user-select: none; }
+.nav-item:hover { background: var(--surface); color: var(--dark); }
+.nav-item.active { background: var(--gold-subtle); color: var(--dark); border-left-color: var(--gold); font-weight: 500; }
+.nav-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+.nav-item.active .nav-dot { background: var(--gold); }
+
+.sidebar-members { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+.member-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dark-2); }
+.avatar { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; }
+.av-h { background: var(--gold-subtle); color: #7A5C20; }
+.av-m { background: #EEF2FF; color: #4040AA; }
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* PAGE HEADER */
+.page-header { margin-bottom: 28px; }
+.page-header h1 { font-size: 22px; font-weight: 600; color: var(--dark); }
+.page-header p { font-size: 13px; color: var(--dark-3); margin-top: 4px; }
+.page-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
+.page-header-row .page-header { margin-bottom: 0; }
+
+/* CARDS */
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+.card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-header h2 { font-size: 13px; font-weight: 600; color: var(--dark); }
+.card-body { padding: 18px; }
+
+/* METRIC CARDS */
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.metric { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; }
+.metric-label { font-size: 11px; color: var(--dark-3); margin-bottom: 6px; }
+.metric-value { font-size: 24px; font-weight: 600; color: var(--dark); }
+.metric-sub { font-size: 11px; color: var(--dark-3); margin-top: 3px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.badge-gold { background: var(--gold-subtle); color: #7A5C20; border: 1px solid var(--gold-light); }
+.badge-green { background: var(--success-bg); color: #2E6B2E; }
+.badge-amber { background: var(--warning-bg); color: #7A4A10; }
+.badge-red { background: var(--error-bg); color: #8B2020; }
+.badge-gray { background: var(--surface); color: var(--dark-2); border: 1px solid var(--border); }
+.badge-dark { background: var(--dark); color: var(--gold); }
+
+/* OWNER TAGS */
+.owner { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--dark-3); }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--white); cursor: pointer; font-size: 12px; font-weight: 500; color: var(--dark); font-family: inherit; transition: all 0.12s; }
+.btn:hover { background: var(--surface); border-color: var(--dark-3); }
+.btn-primary { background: var(--dark); color: var(--gold); border-color: var(--dark); }
+.btn-primary:hover { background: #2a2a2a; }
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--surface); }
+
+/* TABLES */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 9px 14px; font-size: 11px; font-weight: 600; color: var(--dark-3); background: var(--surface); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--dark-2); }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--gold-subtle); }
+
+/* FORMS */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 11px; font-weight: 600; color: var(--dark-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.form-group input, .form-group select, .form-group textarea {
+  border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 11px;
+  font-size: 13px; font-family: inherit; background: var(--white); color: var(--dark);
+  transition: border-color 0.12s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: var(--gold);
+}
+.form-group textarea { resize: vertical; min-height: 72px; }
+
+/* MODAL */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: flex-start; justify-content: center; padding-top: 64px; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; width: 520px; max-height: 82vh; overflow-y: auto; }
+.modal h3 { font-size: 15px; font-weight: 600; margin-bottom: 18px; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+/* TABS */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab { padding: 9px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--dark-3); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.12s; }
+.tab:hover { color: var(--dark); }
+.tab.active { color: var(--dark); border-bottom-color: var(--gold); }
+
+/* CLAUSE BLOCKS */
+.clause { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; }
+.clause-tag { font-size: 10px; font-weight: 600; color: var(--dark-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+.clause h3 { font-size: 13px; font-weight: 600; margin-bottom: 7px; color: var(--dark); }
+.clause p { font-size: 13px; color: var(--dark-2); line-height: 1.65; }
+
+/* STEPS */
+.step-list { display: flex; flex-direction: column; gap: 0; }
+.step { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); align-items: flex-start; }
+.step:last-child { border-bottom: none; }
+.step-num { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; background: var(--gold-subtle); border: 1px solid var(--gold-light); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: #7A5C20; }
+.step-title { font-size: 13px; font-weight: 600; color: var(--dark); }
+.step-desc { font-size: 12px; color: var(--dark-3); margin-top: 3px; line-height: 1.5; }
+
+/* FLOW PILLS */
+.flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+.flow-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 4px 12px; font-size: 11px; font-weight: 500; color: var(--dark-2); }
+.flow-arrow { color: var(--dark-3); font-size: 11px; }
+
+/* SETUP GRID */
+.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.setup-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: flex-start; gap: 12px; }
+.setup-icon { width: 34px; height: 34px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.setup-title { font-size: 13px; font-weight: 600; color: var(--dark); }
+.setup-desc { font-size: 11px; color: var(--dark-3); margin-top: 2px; }
+
+/* STATUS DOTS */
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-done { background: var(--success); }
+.dot-progress { background: var(--warning); }
+.dot-empty { background: var(--border); }
+
+/* PROGRESS BAR */
+.progress-wrap { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.3s; }
+
+/* CHECKLIST */
+.check-item { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--dark-2); cursor: pointer; }
+.check-item:last-child { border-bottom: none; }
+.check-item input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--gold); cursor: pointer; }
+
+/* PRICING CARDS */
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+.price-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+.price-card.featured { border-color: var(--gold); background: var(--gold-subtle); }
+.price-name { font-size: 13px; font-weight: 600; color: var(--dark); }
+.price-amount { font-size: 22px; font-weight: 700; color: var(--dark); margin: 8px 0 4px; }
+.price-amount span { font-size: 12px; font-weight: 400; color: var(--dark-3); }
+.price-timeline { font-size: 11px; color: var(--dark-3); margin-bottom: 10px; }
+.price-desc { font-size: 12px; color: var(--dark-2); line-height: 1.55; }
+
+/* NOTE BOX */
+.note { background: var(--gold-subtle); border: 1px solid var(--gold-light); border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; color: #7A5C20; margin-top: 12px; }
+.note strong { color: #5A3A08; }
+.warning-box { background: var(--warning-bg); border: 1px solid #F0C080; border-radius: var(--radius-md); padding: 10px 14px; font-size: 12px; color: #7A4A10; margin-top: 12px; }
+
+/* TWO COL */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* TOKEN ROW */
+.token-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.token-row:last-child { border-bottom: none; }
+.token-swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid var(--border); flex-shrink: 0; }
+.token-name { font-family: 'SF Mono', 'Fira Code', monospace; color: var(--dark-2); min-width: 160px; }
+.token-value { color: var(--dark-3); font-family: monospace; }
+.token-desc { color: var(--dark-3); margin-left: auto; font-size: 11px; }
+
+/* TOOL ITEM */
+.tool-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.tool-item:last-child { border-bottom: none; }
+.tool-logo { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--dark-2); flex-shrink: 0; }
+.tool-name { font-size: 13px; font-weight: 600; color: var(--dark); }
+.tool-desc { font-size: 11px; color: var(--dark-3); margin-top: 1px; }
+.tool-cost { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--dark); white-space: nowrap; }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 36px 20px; color: var(--dark-3); font-size: 13px; }
+
+/* INVOICE CARD */
+.inv-line { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.inv-line:last-child { border-bottom: none; }
+.inv-total { display: flex; justify-content: space-between; padding: 12px 0 0; font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">SL</div>
+    <div class="logo-text">Studio Lumi</div>
+    <div class="logo-sub">Internal OS · v3.1</div>
+  </div>
+
+  <div class="nav-section-label">Overview</div>
+  <div class="nav-item active" onclick="go('home')"><div class="nav-dot"></div> Dashboard</div>
+  <div class="nav-item" onclick="go('setup')"><div class="nav-dot"></div> Studio setup</div>
+
+  <div class="nav-section-label">Admin</div>
+  <div class="nav-item" onclick="go('leads')"><div class="nav-dot"></div> Leads</div>
+  <div class="nav-item" onclick="go('projects')"><div class="nav-dot"></div> Projects</div>
+  <div class="nav-item" onclick="go('invoices')"><div class="nav-dot"></div> Invoices</div>
+  <div class="nav-item" onclick="go('expenses')"><div class="nav-dot"></div> Expenses</div>
+
+  <div class="nav-section-label">Studio docs</div>
+  <div class="nav-item" onclick="go('legal')"><div class="nav-dot"></div> Legal</div>
+  <div class="nav-item" onclick="go('sops')"><div class="nav-dot"></div> SOPs & workflows</div>
+  <div class="nav-item" onclick="go('onboarding')"><div class="nav-dot"></div> Client onboarding</div>
+  <div class="nav-item" onclick="go('finance')"><div class="nav-dot"></div> Finance & pricing</div>
+  <div class="nav-item" onclick="go('designsystem')"><div class="nav-dot"></div> Design system</div>
+  <div class="nav-item" onclick="go('templates')"><div class="nav-dot"></div> Project templates</div>
+  <div class="nav-item" onclick="go('tools')"><div class="nav-dot"></div> Tools & stack</div>
+
+  <div class="sidebar-members">
+    <div class="member-chip"><div class="avatar av-h">H</div> Hauwa</div>
+    <div class="member-chip"><div class="avatar av-m">M</div> Maryam</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ─── DASHBOARD ─── -->
+<div id="page-home" class="page active">
+  <div class="page-header">
+    <h1>Studio Lumi</h1>
+    <p>One file. How we run the studio. · Last updated April 2026</p>
+  </div>
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Active projects</div><div class="metric-value" id="m-proj">0</div><div class="metric-sub">in progress</div></div>
+    <div class="metric"><div class="metric-label">Open leads</div><div class="metric-value" id="m-leads">0</div><div class="metric-sub">in pipeline</div></div>
+    <div class="metric"><div class="metric-label">Outstanding</div><div class="metric-value" id="m-unpaid">$0</div><div class="metric-sub">unpaid invoices</div></div>
+    <div class="metric"><div class="metric-label">Revenue (paid)</div><div class="metric-value" id="m-rev">$0</div><div class="metric-sub">total collected</div></div>
+  </div>
+  <div class="two-col" style="margin-bottom:16px;">
+    <div class="card">
+      <div class="card-header"><h2>Recent leads</h2><button class="btn btn-sm" onclick="go('leads')">View all</button></div>
+      <div id="hl-leads"><div class="empty">No leads yet.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Active projects</h2><button class="btn btn-sm" onclick="go('projects')">View all</button></div>
+      <div id="hl-projects"><div class="empty">No projects yet.</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2>Studio setup progress</h2><button class="btn btn-sm" onclick="go('setup')">View setup</button></div>
+    <div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:12px;color:var(--dark-3);" id="setup-label">0 of 10 complete</span>
+        <span style="font-size:12px;font-weight:600;" id="setup-pct">0%</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" id="setup-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header"><h2>Document index</h2></div>
+    <div class="card-body" style="padding:0;">
+      <table>
+        <thead><tr><th>#</th><th>Section</th><th>Owner</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr onclick="go('legal')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">01</td><td style="font-weight:600;">Legal</td><td><span class="badge badge-gray">Both</span></td><td style="color:var(--dark-3);">Partnership agreements, contracts, NDAs, and studio policies</td></tr>
+          <tr onclick="go('sops')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">02</td><td style="font-weight:600;">SOPs & workflows</td><td><span class="badge badge-gold">Hauwa</span></td><td style="color:var(--dark-3);">Kickoff, design review, handoff, file naming, offboarding</td></tr>
+          <tr onclick="go('onboarding')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">03</td><td style="font-weight:600;">Client onboarding</td><td><span class="badge badge-gold">Hauwa</span></td><td style="color:var(--dark-3);">Welcome checklists, intake forms, scope of work, comms norms</td></tr>
+          <tr onclick="go('finance')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">04</td><td style="font-weight:600;">Finance & pricing</td><td><span class="badge badge-gray">Both</span></td><td style="color:var(--dark-3);">Pricing tiers, invoice tracker, expenses, payment terms</td></tr>
+          <tr onclick="go('designsystem')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">05</td><td style="font-weight:600;">Design system docs</td><td><span class="badge badge-gold">Hauwa</span></td><td style="color:var(--dark-3);">Color tokens, typography, spacing, component inventory</td></tr>
+          <tr onclick="go('templates')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">06</td><td style="font-weight:600;">Project templates</td><td><span class="badge badge-gray">Both</span></td><td style="color:var(--dark-3);">Briefs, status updates, retros, invoices, meetings</td></tr>
+          <tr onclick="go('tools')" style="cursor:pointer;"><td style="font-weight:600;color:var(--dark-3);">07</td><td style="font-weight:600;">Tools & stack</td><td><span class="badge badge-gray">Maryam</span></td><td style="color:var(--dark-3);">Tool inventory, access tracker, subscriptions, resources</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SETUP ─── -->
+<div id="page-setup" class="page">
+  <div class="page-header"><h1>Studio setup</h1><p>Track the 10 foundation areas needed to run Studio Lumi properly.</p></div>
+  <div class="setup-grid" id="setup-grid"></div>
+</div>
+
+<!-- ─── LEADS ─── -->
+<div id="page-leads" class="page">
+  <div class="page-header-row">
+    <div class="page-header"><h1>Leads</h1><p>Every potential client from first contact to close.</p></div>
+    <button class="btn btn-primary" onclick="openModal('lead')">+ Add lead</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Client</th><th>Service</th><th>Value</th><th>Status</th><th>Owner</th><th>Notes</th><th></th></tr></thead>
+      <tbody id="leads-tbody"><tr><td colspan="7" class="empty">No leads yet.</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── PROJECTS ─── -->
+<div id="page-projects" class="page">
+  <div class="page-header-row">
+    <div class="page-header"><h1>Projects</h1><p>All active and completed client work.</p></div>
+    <button class="btn btn-primary" onclick="openModal('project')">+ Add project</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Client</th><th>Service</th><th>Budget</th><th>Deadline</th><th>Stage</th><th>Owner</th><th></th></tr></thead>
+      <tbody id="projects-tbody"><tr><td colspan="7" class="empty">No projects yet.</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── INVOICES ─── -->
+<div id="page-invoices" class="page">
+  <div class="page-header-row">
+    <div class="page-header"><h1>Invoices</h1><p>Track all billing and payment status.</p></div>
+    <button class="btn btn-primary" onclick="openModal('invoice')">+ Add invoice</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Invoice #</th><th>Client</th><th>Amount</th><th>Sent</th><th>Due</th><th>Status</th><th></th></tr></thead>
+      <tbody id="invoices-tbody"><tr><td colspan="7" class="empty">No invoices yet.</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ─── EXPENSES ─── -->
+<div id="page-expenses" class="page">
+  <div class="page-header-row">
+    <div class="page-header"><h1>Expenses</h1><p>All studio costs and recurring subscriptions.</p></div>
+    <button class="btn btn-primary" onclick="openModal('expense')">+ Log expense</button>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table><thead><tr><th>Description</th><th>Category</th><th>Amount</th><th>Date</th><th>Paid by</th><th></th></tr></thead>
+      <tbody id="expenses-tbody">
+        <tr><td>Figma Organization</td><td><span class="badge badge-gray">Software</span></td><td>$75/mo</td><td>Feb 01, 2026</td><td>Both</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Framer Pro</td><td><span class="badge badge-gray">Software</span></td><td>$30/mo</td><td>Feb 01, 2026</td><td>Hauwa</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Linear Standard</td><td><span class="badge badge-gray">Software</span></td><td>$16/mo</td><td>Feb 01, 2026</td><td>Both</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Google Workspace</td><td><span class="badge badge-gray">Software</span></td><td>$14/mo</td><td>Feb 01, 2026</td><td>Maryam</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Supabase Pro</td><td><span class="badge badge-gray">Infrastructure</span></td><td>$25/mo</td><td>Feb 01, 2026</td><td>Maryam</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Notion Plus</td><td><span class="badge badge-gray">Software</span></td><td>$10/mo</td><td>Feb 01, 2026</td><td>Both</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;align-items:center;">
+      <span style="font-size:12px;color:var(--dark-3);">Monthly total</span>
+      <span style="font-size:15px;font-weight:700;">$170/mo</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── LEGAL ─── -->
+<div id="page-legal" class="page">
+  <div class="page-header"><h1>Legal</h1><p>Partnership agreements, client contracts, NDAs, and studio policies.</p></div>
+
+  <div class="card">
+    <div class="card-header"><h2>Partnership agreement summary <span class="badge badge-gray" style="margin-left:8px;">Core document</span> <span class="badge badge-dark" style="margin-left:4px;">Both</span></h2></div>
+    <div class="card-body">
+      <table style="margin-bottom:12px;">
+        <tr><th style="width:200px;">Term</th><th>Detail</th></tr>
+        <tr><td>Ownership split</td><td>50 / 50 — equal partnership</td></tr>
+        <tr><td>Decision-making</td><td>Consensus required for major decisions (&gt;$5K spend, new hires, pivots)</td></tr>
+        <tr><td>Profit sharing</td><td>Monthly distribution after expenses, 20% held as studio reserve</td></tr>
+        <tr><td>Exit terms</td><td>90-day notice, buyout at fair market value, non-compete for 12 months</td></tr>
+      </table>
+      <div class="note"><strong>Note:</strong> Full signed document stored in Google Drive → Legal → Partnership Agreement v3.pdf. Both partners have signed copies.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Client contract checklist <span class="badge badge-gold" style="margin-left:8px;">Mandatory</span></h2></div>
+    <div class="card-body">
+      <p style="font-size:12px;color:var(--dark-3);margin-bottom:12px;">Every client contract must include the following before signing:</p>
+      <div id="contract-checklist"></div>
+      <div class="note" style="margin-top:14px;"><strong>Tip:</strong> Use the contract template in Google Drive → Legal → Client Contract Template v4.docx. Customize per project but never remove core clauses.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>NDA tracker</h2><button class="btn btn-sm btn-primary" onclick="openModal('nda')">+ Add NDA</button></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>Client name</th><th>Date signed</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
+      <tbody id="nda-tbody">
+        <tr><td>Wellspring Health</td><td>Jan 15, 2026</td><td>Jan 15, 2028</td><td><span class="badge badge-green">Active</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Novo Collective</td><td>Dec 02, 2025</td><td>Dec 02, 2027</td><td><span class="badge badge-green">Active</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Greenline Finance</td><td>Nov 10, 2025</td><td>Nov 10, 2026</td><td><span class="badge badge-amber">Pending</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Arclight Studios</td><td>Sep 05, 2025</td><td>Sep 05, 2027</td><td><span class="badge badge-green">Active</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Catalyst Ventures</td><td>Jun 20, 2025</td><td>Jun 20, 2026</td><td><span class="badge badge-amber">Pending</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+        <tr><td>Opal & Clay</td><td>Mar 12, 2025</td><td>Mar 12, 2026</td><td><span class="badge badge-gray">Done</span></td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)">Remove</button></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Studio policies <span class="badge badge-dark" style="margin-left:8px;">Both</span></h2></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div><div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Working hours</div><p style="font-size:13px;color:var(--dark-2);line-height:1.6;">Core hours 10:00 AM – 4:00 PM (WAT), Monday through Friday. Async work is flexible outside these hours.</p></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Communication</div><p style="font-size:13px;color:var(--dark-2);line-height:1.6;">Client-facing: respond within 24 hours on business days. Email for formal communication, Slack for quick syncs.</p></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Confidentiality</div><p style="font-size:13px;color:var(--dark-2);line-height:1.6;">All client work, internal processes, and financial data are confidential. Portfolio pieces require a separate signed approval form.</p></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Time off</div><p style="font-size:13px;color:var(--dark-2);line-height:1.6;">Two weeks advance notice for planned time off. Cover handoff responsibilities before leave. Emergency leave communicated ASAP.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SOPs ─── -->
+<div id="page-sops" class="page">
+  <div class="page-header"><h1>SOPs & workflows</h1><p>Standard operating procedures for every phase of studio work.</p></div>
+
+  <div class="card">
+    <div class="card-header"><h2>Project kickoff <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2></div>
+    <div class="card-body">
+      <div class="flow">
+        <div class="flow-pill">Brief received</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Discovery call</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Alignment</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Contract signed</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Kickoff call</div>
+      </div>
+      <div class="step-list">
+        <div class="step"><div class="step-num">1</div><div><div class="step-title">Receive & review the client brief</div><div class="step-desc">Log in Linear, assign intake tag, review within 24 hours.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div><div class="step-title">Schedule discovery call</div><div class="step-desc">30-minute call to clarify goals, timeline, and expectations. Use the discovery call template.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div><div class="step-title">Internal alignment</div><div class="step-desc">Discuss scope, feasibility, and pricing with Maryam. Agree on approach and timeline.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div><div class="step-title">Send proposal & contract</div><div class="step-desc">Use pricing guide for quote. Send contract using approved template. Await signed contract + deposit.</div></div></div>
+        <div class="step"><div class="step-num">5</div><div><div class="step-title">Kickoff call with client</div><div class="step-desc">Walk through the scope, introduce tools, set milestones. Share project workspace access.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Design review process <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2></div>
+    <div class="card-body">
+      <div class="flow">
+        <div class="flow-pill">Iteration ready</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Prep presentation</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Present to client</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Collect feedback</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Implement</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Final approval</div>
+      </div>
+      <div class="step-list">
+        <div class="step"><div class="step-num">1</div><div><div class="step-title">Internal review first</div><div class="step-desc">Review all screens for consistency, spacing, and edge cases before sharing with client.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div><div class="step-title">Prepare client presentation</div><div class="step-desc">Create a dedicated review page in Figma with annotations explaining design decisions.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div><div class="step-title">Present to client</div><div class="step-desc">Schedule a live walkthrough or send an async Loom recording. Never send raw Figma links without context.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div><div class="step-title">Collect structured feedback</div><div class="step-desc">Use the feedback form template. Client has 3 business days to consolidate feedback.</div></div></div>
+        <div class="step"><div class="step-num">5</div><div><div class="step-title">Implement revisions</div><div class="step-desc">Address feedback in a new iteration branch. Track changes in the revision log.</div></div></div>
+        <div class="step"><div class="step-num">6</div><div><div class="step-title">Final approval</div><div class="step-desc">Get written sign-off via email or form before moving to handoff.</div></div></div>
+      </div>
+      <div class="note"><strong>Default:</strong> 2 revision rounds included. Additional rounds billed at the hourly rate in the contract.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>File naming & organisation <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2></div>
+    <div class="card-body">
+      <div class="step-list">
+        <div class="step"><div class="step-num">1</div><div><div class="step-title">Project root folder</div><div class="step-desc">Format: <code style="background:var(--surface);padding:1px 5px;border-radius:3px;font-size:11px;">[ClientName]_[ProjectName]_[Year]</code> — e.g., Wellspring_Rebrand_2026</div></div></div>
+        <div class="step"><div class="step-num">2</div><div><div class="step-title">Standard subfolders</div><div class="step-desc"><code style="background:var(--surface);padding:1px 5px;border-radius:3px;font-size:11px;">01_Brief / 02_Discovery / 03_Design / 04_Dev / 05_Handoff / 06_Archive</code></div></div></div>
+        <div class="step"><div class="step-num">3</div><div><div class="step-title">File naming</div><div class="step-desc">Format: <code style="background:var(--surface);padding:1px 5px;border-radius:3px;font-size:11px;">[ProjectName]_[Description]_v[X].[ext]</code> — e.g., Wellspring_Homepage_v3.fig</div></div></div>
+        <div class="step"><div class="step-num">4</div><div><div class="step-title">Version control</div><div class="step-desc">Increment version on major changes. Archive old versions, never delete them.</div></div></div>
+      </div>
+      <div class="note"><strong>Note:</strong> All project folders live in the shared Google Drive. Personal drives should not contain any client work.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Handoff process <span class="badge badge-dark" style="margin-left:8px;">Both</span></h2></div>
+    <div class="card-body">
+      <div class="flow">
+        <div class="flow-pill">Final QA</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Prep assets</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Dev specs</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Handoff meeting</div><span class="flow-arrow">→</span>
+        <div class="flow-pill">Support window</div>
+      </div>
+      <div class="step-list">
+        <div class="step"><div class="step-num">1</div><div><div class="step-title">Final QA check</div><div class="step-desc">Review all screens for consistency, spacing, responsive behaviour, and edge cases.</div></div></div>
+        <div class="step"><div class="step-num">2</div><div><div class="step-title">Prepare export assets</div><div class="step-desc">Export icons (SVG), images (2x PNG/WebP), and any required animations.</div></div></div>
+        <div class="step"><div class="step-num">3</div><div><div class="step-title">Document dev specs</div><div class="step-desc">Annotate spacing, colours (use tokens), interactions, and responsive breakpoints in Figma.</div></div></div>
+        <div class="step"><div class="step-num">4</div><div><div class="step-title">Handoff meeting</div><div class="step-desc">Walk developer/client through the design. Record the session for reference.</div></div></div>
+        <div class="step"><div class="step-num">5</div><div><div class="step-title">Support window</div><div class="step-desc">5 business days of support post-handoff for clarifications. Not new design work.</div></div></div>
+      </div>
+      <div class="note"><strong>For Framer builds:</strong> export directly and hand over the Framer project with editor access. Include a brief setup guide.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── ONBOARDING ─── -->
+<div id="page-onboarding" class="page">
+  <div class="page-header"><h1>Client onboarding</h1><p>Everything needed to welcome a new client and set the project up for success.</p></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ob','process')">Onboarding process</div>
+    <div class="tab" onclick="switchTab('ob','intake')">Intake form</div>
+    <div class="tab" onclick="switchTab('ob','checklist')">Welcome checklist</div>
+    <div class="tab" onclick="switchTab('ob','email')">Welcome email</div>
+    <div class="tab" onclick="switchTab('ob','comms')">Comms norms</div>
+  </div>
+
+  <div id="ob-process">
+    <div class="card">
+      <div class="card-header"><h2>New client process <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2></div>
+      <div class="card-body">
+        <div class="step-list">
+          <div class="step"><div class="step-num">1</div><div><div class="step-title">Lead inquiry received</div><div class="step-desc">Client reaches out via contact form, DM, or email. Log immediately in leads tracker.</div></div></div>
+          <div class="step"><div class="step-num">2</div><div><div class="step-title">Discovery call (30 min)</div><div class="step-desc">Understand project scope, timeline, budget, and fit. Send Loom recap after if helpful.</div></div></div>
+          <div class="step"><div class="step-num">3</div><div><div class="step-title">Internal alignment</div><div class="step-desc">Discuss with Maryam. Agree on pricing, timeline, and who owns the project.</div></div></div>
+          <div class="step"><div class="step-num">4</div><div><div class="step-title">Send proposal + contract</div><div class="step-desc">Scoped proposal with pricing, timeline, and deliverables. Client signs contract and pays 50% deposit.</div></div></div>
+          <div class="step"><div class="step-num">5</div><div><div class="step-title">Send intake form</div><div class="step-desc">Client fills out detailed intake form covering brand, goals, references, and tech stack.</div></div></div>
+          <div class="step"><div class="step-num">6</div><div><div class="step-title">Admin setup</div><div class="step-desc">Create project folder, set up in Linear, create Figma file, set up Slack channel, send welcome email.</div></div></div>
+          <div class="step"><div class="step-num">7</div><div><div class="step-title">Project kickoff</div><div class="step-desc">Kickoff call or Loom. Share timeline, communication norms, revision process, and workspace access.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ob-intake" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Project brief intake form <span class="badge badge-gold" style="margin-left:8px;">Template</span></h2></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Business</div>
+            <div class="step-list">
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What does your business do and who is your target customer?</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What problem does this project solve for your business?</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">Do you have an existing brand identity? If yes, share assets.</div></div>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">Technical</div>
+            <div class="step-list">
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What tech stack or platform? (Framer, Shopify, custom etc.)</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">Do you have an existing site/app? Share link and login if needed.</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">Who manages the site/product after handoff?</div></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Project</div>
+            <div class="step-list">
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What are the key pages/screens/features required?</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What does success look like? List 3–5 measurable goals.</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">Share 3–5 references or inspirations and explain why.</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What platforms/devices must this work on?</div></div>
+            </div>
+            <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">Logistics</div>
+            <div class="step-list">
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">What is your confirmed budget range?</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">When do you need this live?</div></div>
+              <div class="step" style="padding:8px 0;"><div style="font-size:13px;color:var(--dark-2);">Who is the main point of contact and decision maker?</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ob-checklist" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>New client welcome checklist <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2><span style="font-size:12px;color:var(--dark-3);">Complete within 48 hours of contract signing</span></div>
+      <div class="card-body">
+        <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Admin setup</div>
+        <div id="admin-checklist"></div>
+        <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">Project setup</div>
+        <div id="project-checklist"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ob-email" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Welcome email template <span class="badge badge-gold" style="margin-left:8px;">Hauwa</span></h2></div>
+      <div class="card-body">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:20px;font-size:13px;line-height:1.8;color:var(--dark-2);">
+          <div style="margin-bottom:12px;"><strong style="color:var(--dark-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Subject:</strong> Welcome to Studio Lumi — [Project Name] Kickoff</div>
+          <p>Hi [Client Name],</p><br>
+          <p>We're excited to officially kick off [Project Name]! Here's everything you need to get started:</p><br>
+          <p>· Project brief: [Link]<br>· Shared folder: [Link]<br>· Kickoff call: [Date & Time]<br>· Slack channel: [Link or invite]</p><br>
+          <p>Please review the attached scope of work and let us know if you have any questions before our call.</p><br>
+          <p>Looking forward to creating something great together.</p><br>
+          <p>— Hauwa, Studio Lumi</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ob-comms" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Communication norms <span class="badge badge-gold" style="margin-left:8px;">Share with client</span></h2></div>
+      <div class="card-body">
+        <table>
+          <tr><th>Topic</th><th>Standard</th><th>Detail</th></tr>
+          <tr><td>Response time</td><td style="font-weight:600;">Within 24 hours</td><td style="color:var(--dark-3);">On business days</td></tr>
+          <tr><td>Primary channel</td><td style="font-weight:600;">Email + Slack</td><td style="color:var(--dark-3);">Email for decisions, Slack for quick Qs</td></tr>
+          <tr><td>Meeting cadence</td><td style="font-weight:600;">Weekly check-in</td><td style="color:var(--dark-3);">30 min, same day/time each week</td></tr>
+          <tr><td>Feedback rounds</td><td style="font-weight:600;">2 rounds included</td><td style="color:var(--dark-3);">Additional rounds billed at hourly rate</td></tr>
+          <tr><td>Feedback deadline</td><td style="font-weight:600;">3 business days</td><td style="color:var(--dark-3);">Per review round — late feedback extends timeline</td></tr>
+        </table>
+        <div class="note" style="margin-top:14px;"><strong>Reminder:</strong> Share these norms with the client during kickoff. Set expectations early to avoid scope creep and communication gaps.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── FINANCE ─── -->
+<div id="page-finance" class="page">
+  <div class="page-header"><h1>Finance & pricing</h1><p>Pricing, invoicing, expenses, payment terms, and revenue tracking.</p></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('fin','pricing')">Pricing guide</div>
+    <div class="tab" onclick="switchTab('fin','terms')">Payment terms</div>
+    <div class="tab" onclick="switchTab('fin','revenue')">Revenue summary</div>
+  </div>
+
+  <div id="fin-pricing">
+    <div class="pricing-grid">
+      <div class="price-card"><div class="price-name">Product design</div><div class="price-amount">$4,000 <span>starting</span></div><div class="price-timeline">4–8 weeks</div><div class="price-desc">End-to-end UI/UX for web or mobile apps. Includes research, wireframes, and high-fidelity designs.</div></div>
+      <div class="price-card featured"><div class="price-name">Design systems</div><div class="price-amount">$6,000 <span>starting</span></div><div class="price-timeline">6–12 weeks</div><div class="price-desc">Token architecture, component library, documentation, and governance guidelines.</div></div>
+      <div class="price-card"><div class="price-name">Framer build</div><div class="price-amount">$2,500 <span>starting</span></div><div class="price-timeline">2–4 weeks</div><div class="price-desc">Design-to-live-site using Framer. Includes responsive design, CMS setup, and deployment.</div></div>
+      <div class="price-card"><div class="price-name">Shopify / WordPress</div><div class="price-amount">$1,500 <span>starting</span></div><div class="price-timeline">1–3 weeks</div><div class="price-desc">Store setup, theme customisation, app integration, and handoff with documentation.</div></div>
+      <div class="price-card"><div class="price-name">AI content & strategy</div><div class="price-amount">$1,500 <span>starting</span></div><div class="price-timeline">1–3 weeks</div><div class="price-desc">AI-assisted product images, video, and content system setup using tools like Midjourney and Runway.</div></div>
+      <div class="price-card"><div class="price-name">Retainer</div><div class="price-amount">$3,000 <span>/ month</span></div><div class="price-timeline">Ongoing</div><div class="price-desc">Priority scheduling, weekly check-ins, dedicated design support. 3-month minimum commitment.</div></div>
+    </div>
+    <div class="note"><strong>Note:</strong> Final pricing is based on scope, timeline, and complexity. This is the rate card for quoting purposes only.</div>
+  </div>
+
+  <div id="fin-terms" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Payment terms policy <span class="badge badge-dark" style="margin-left:8px;">Both</span></h2></div>
+      <div class="card-body">
+        <table>
+          <tr><th>Term</th><th>Policy</th></tr>
+          <tr><td>Deposit</td><td>50% due before work begins</td></tr>
+          <tr><td>Payment schedule</td><td>50% upfront → 25% at midpoint → 25% on final delivery</td></tr>
+          <tr><td>Net terms</td><td>Net 14 — 14 days from invoice date</td></tr>
+          <tr><td>Late payment</td><td>1.5% monthly interest after 14 days overdue</td></tr>
+          <tr><td>Work pause</td><td>Pauses automatically if invoice overdue by 30+ days</td></tr>
+          <tr><td>Client notifications</td><td>Sent at 7, 14, and 30 days overdue</td></tr>
+        </table>
+        <div class="warning-box" style="margin-top:14px;"><strong>Warning:</strong> Work pauses automatically if an invoice is overdue by more than 30 days. Client is notified at 7, 14, and 30 days.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>Kill fee schedule</h2></div>
+      <div class="card-body">
+        <table>
+          <tr><th>Stage</th><th>Situation</th><th>Kill fee</th></tr>
+          <tr><td><span class="badge badge-gray">Stage 1</span></td><td>Cancel after signing, before kickoff</td><td>25% of deposit retained</td></tr>
+          <tr><td><span class="badge badge-amber">Stage 2</span></td><td>Cancel during discovery / early design</td><td>100% of deposit retained</td></tr>
+          <tr><td><span class="badge badge-amber">Stage 3</span></td><td>Cancel after designs/dev delivered</td><td>Deposit + 25% of remaining balance</td></tr>
+          <tr><td><span class="badge badge-red">Stage 4</span></td><td>Cancel when 75%+ complete</td><td>Full remaining balance due</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="fin-revenue" style="display:none;">
+    <div class="metrics" style="grid-template-columns:repeat(3,1fr);">
+      <div class="metric"><div class="metric-label">Monthly target</div><div class="metric-value">$18,000</div><div class="metric-sub">Feb 2026</div></div>
+      <div class="metric"><div class="metric-label">Actual (to date)</div><div class="metric-value">$14,500</div><div class="metric-sub">collected</div></div>
+      <div class="metric"><div class="metric-label">Outstanding</div><div class="metric-value" style="color:var(--warning);">$9,000</div><div class="metric-sub">unpaid</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>February 2026 notes</h2></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--dark-2);line-height:1.7;">Greenline Finance invoice overdue — follow up scheduled for Feb 24. Wellspring mid-project payment received on Feb 18. New retainer starting March with Arclight Studios.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── DESIGN SYSTEM ─── -->
+<div id="page-designsystem" class="page">
+  <div class="page-header"><h1>Design system docs</h1><p>Color tokens, typography, spacing, components, and governance.</p></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ds','tokens')">Color tokens</div>
+    <div class="tab" onclick="switchTab('ds','type')">Typography</div>
+    <div class="tab" onclick="switchTab('ds','components')">Components</div>
+    <div class="tab" onclick="switchTab('ds','naming')">Token naming</div>
+  </div>
+
+  <div id="ds-tokens">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><h2>Primitives</h2></div>
+        <div class="card-body" style="padding:12px 18px;">
+          <div class="token-row"><div class="token-swatch" style="background:#FFFFFF;"></div><div class="token-name">White</div><div class="token-value">#FFFFFF</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#F7F7F7;"></div><div class="token-name">Gray 50</div><div class="token-value">#F7F7F7</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#E8E8E8;"></div><div class="token-name">Gray 100</div><div class="token-value">#E8E8E8</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#CCCCCC;"></div><div class="token-name">Gray 300</div><div class="token-value">#CCCCCC</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#888888;"></div><div class="token-name">Gray 500</div><div class="token-value">#888888</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#444444;"></div><div class="token-name">Gray 700</div><div class="token-value">#444444</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#111111;"></div><div class="token-name">Gray 900</div><div class="token-value">#111111</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#C4A265;"></div><div class="token-name">Gold 400</div><div class="token-value">#C4A265</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#E8D8B8;"></div><div class="token-name">Gold 200</div><div class="token-value">#E8D8B8</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#FAF5EB;"></div><div class="token-name">Gold 50</div><div class="token-value">#FAF5EB</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#D04040;"></div><div class="token-name">Red 500</div><div class="token-value">#D04040</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#5A9A5A;"></div><div class="token-name">Green 500</div><div class="token-value">#5A9A5A</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Semantic tokens</h2></div>
+        <div class="card-body" style="padding:12px 18px;">
+          <div class="token-row"><div class="token-swatch" style="background:#FFFFFF;"></div><div class="token-name">background</div><div class="token-value">#FFFFFF</div><div class="token-desc">Page background</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#F7F7F7;"></div><div class="token-name">surface</div><div class="token-value">#F7F7F7</div><div class="token-desc">Cards, inputs, panels</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#E8E8E8;"></div><div class="token-name">border</div><div class="token-value">#E8E8E8</div><div class="token-desc">Dividers, card borders</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#111111;"></div><div class="token-name">text-primary</div><div class="token-value">#111111</div><div class="token-desc">Headings</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#444444;"></div><div class="token-name">text-secondary</div><div class="token-value">#444444</div><div class="token-desc">Body text</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#888888;"></div><div class="token-name">text-tertiary</div><div class="token-value">#888888</div><div class="token-desc">Labels, captions</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#C4A265;"></div><div class="token-name">accent</div><div class="token-value">#C4A265</div><div class="token-desc">Interactive, highlights</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#C4A26515;border:1px solid #E8D8B8;"></div><div class="token-name">accent-subtle</div><div class="token-value">#C4A265·15%</div><div class="token-desc">Accent backgrounds</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#5A9A5A;"></div><div class="token-name">success</div><div class="token-value">#5A9A5A</div><div class="token-desc">Done, paid, active</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#C08040;"></div><div class="token-name">warning</div><div class="token-value">#C08040</div><div class="token-desc">Pending, unpaid</div></div>
+          <div class="token-row"><div class="token-swatch" style="background:#D04040;"></div><div class="token-name">error</div><div class="token-value">#D04040</div><div class="token-desc">Overdue, destructive</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ds-type" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Typography scale</h2></div>
+      <div class="card-body">
+        <table>
+          <tr><th>Token</th><th>Size</th><th>Weight</th><th>Usage</th></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">display</td><td>32px</td><td>700</td><td>Hero headlines</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">heading-1</td><td>24px</td><td>600</td><td>Page titles</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">heading-2</td><td>20px</td><td>600</td><td>Section headers</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">heading-3</td><td>16px</td><td>600</td><td>Card titles</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">body-lg</td><td>16px</td><td>400</td><td>Primary body text</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">body</td><td>14px</td><td>400</td><td>Secondary body text</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">caption</td><td>12px</td><td>400</td><td>Labels, captions</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">overline</td><td>10px</td><td>600</td><td>Section labels (uppercase)</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="ds-components" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Component inventory</h2></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Component</th><th>Status</th><th>Owner</th><th>Last updated</th></tr></thead>
+          <tbody>
+            <tr><td>Button (Primary, Secondary, Ghost)</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Feb 18, 2026</td></tr>
+            <tr><td>Input (Text, Number, Textarea)</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Feb 15, 2026</td></tr>
+            <tr><td>Card (Standard, Compact, Feature)</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Feb 10, 2026</td></tr>
+            <tr><td>Navigation (Top, Side, Mobile)</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Feb 08, 2026</td></tr>
+            <tr><td>Modal / Dialog</td><td><span class="badge badge-green">Active</span></td><td>Both</td><td>Jan 28, 2026</td></tr>
+            <tr><td>Table (Data, Compact)</td><td><span class="badge badge-amber">Pending</span></td><td>Hauwa</td><td>Jan 20, 2026</td></tr>
+            <tr><td>Dropdown / Select</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Jan 15, 2026</td></tr>
+            <tr><td>Tag / Badge</td><td><span class="badge badge-green">Active</span></td><td>Hauwa</td><td>Jan 12, 2026</td></tr>
+            <tr><td>Toast / Notification</td><td><span class="badge badge-amber">Pending</span></td><td>Maryam</td><td>Dec 20, 2025</td></tr>
+            <tr><td>Accordion / Collapsible</td><td><span class="badge badge-gray">Done</span></td><td>Hauwa</td><td>Dec 15, 2025</td></tr>
+            <tr><td>Avatar / User Badge</td><td><span class="badge badge-gray">Done</span></td><td>Both</td><td>Dec 10, 2025</td></tr>
+            <tr><td>Progress / Loader</td><td><span class="badge badge-amber">Pending</span></td><td>Maryam</td><td>Nov 30, 2025</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="ds-naming" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Token naming conventions</h2></div>
+      <div class="card-body">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:16px;font-family:monospace;font-size:13px;color:var(--dark-2);">
+          [category]-[property]-[variant]-[state]
+        </div>
+        <table>
+          <tr><th>Token</th><th>Value</th></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-bg-primary</td><td>#FFFFFF</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-bg-surface</td><td>#F7F7F7</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-text-primary</td><td>#111111</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-text-secondary</td><td>#444444</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-border-default</td><td>#E8E8E8</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-accent-default</td><td>#C4A265</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">color-accent-subtle</td><td>#C4A26515</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spacing-xs</td><td>4px</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spacing-sm</td><td>8px</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spacing-md</td><td>16px</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spacing-lg</td><td>24px</td></tr>
+          <tr><td style="font-family:monospace;font-size:12px;">spacing-xl</td><td>40px</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TEMPLATES ─── -->
+<div id="page-templates" class="page">
+  <div class="page-header"><h1>Project templates</h1><p>Reusable fillable templates for every stage of project work.</p></div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tmpl','brief')">Project brief</div>
+    <div class="tab" onclick="switchTab('tmpl','status')">Weekly status</div>
+    <div class="tab" onclick="switchTab('tmpl','retro')">Retrospective</div>
+    <div class="tab" onclick="switchTab('tmpl','invoice')">Invoice card</div>
+  </div>
+
+  <div id="tmpl-brief">
+    <div class="card">
+      <div class="card-header"><h2>Project brief template</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Project name</label><input placeholder="Enter project name..."></div>
+          <div class="form-group"><label>Client</label><input placeholder="Client name and primary contact"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Project overview</label><textarea placeholder="Brief summary of the project — what are we building and why?"></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Goals & objectives</label><textarea placeholder="What does success look like? List 3–5 measurable goals."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Target audience</label><textarea placeholder="Who is this for? Demographics, behaviours, needs."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Deliverables</label><textarea placeholder="List all expected outputs (e.g., 12 screens, design system, Framer site)"></textarea></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Timeline</label><input placeholder="Start date, milestones, final delivery"></div>
+          <div class="form-group"><label>Budget</label><input placeholder="Total budget and payment schedule"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;"><label>References & inspiration</label><textarea placeholder="Links to sites, apps, or styles that reflect the desired direction"></textarea></div>
+        <div class="form-group"><label>Constraints & assumptions</label><textarea placeholder="Technical limitations, platform requirements, brand guidelines to follow"></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tmpl-status" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Weekly status update</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Week of</label><input placeholder="Feb 17 – Feb 21, 2026"></div>
+          <div class="form-group"><label>Project</label><input placeholder="Project name"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Completed this week</label><textarea placeholder="List what was completed..."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>In progress</label><textarea placeholder="What's currently being worked on..."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Blockers</label><textarea placeholder="Any blockers or dependencies..."></textarea></div>
+        <div class="form-group"><label>Next week plan</label><textarea placeholder="What we plan to complete next week..."></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tmpl-retro" style="display:none;">
+    <div class="card">
+      <div class="card-header"><h2>Project retrospective</h2></div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group"><label>Project name</label><input placeholder="Enter project name..."></div>
+          <div class="form-group"><label>Client</label><input placeholder="Client name"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Duration</label><input placeholder="Start date — End date (total weeks)"></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>What went well</label><textarea placeholder="Clear brief from the start, strong client communication..."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>What didn't go well</label><textarea placeholder="Scope creep, late feedback rounds..."></textarea></div>
+        <div class="form-group" style="margin-bottom:12px;"><label>Lessons learned</label><textarea placeholder="Build in 20% buffer time, set feedback deadlines in writing..."></textarea></div>
+        <div class="form-grid">
+          <div class="form-group"><label>Would we work with them again?</label><select><option>Yes</option><option>Maybe</option><option>No</option></select></div>
+          <div class="form-group"><label>Final rating (1–5)</label><select><option>5 — Excellent</option><option>4 — Good</option><option>3 — Average</option><option>2 — Below average</option><option>1 — Poor</option></select></div>
+        </div>
+        <div class="form-group"><label>Why / notes</label><textarea placeholder="Notes on client relationship, project outcome, and profitability..."></textarea></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tmpl-invoice" style="display:none;">
+    <div class="card" style="max-width:480px;">
+      <div class="card-header"><h2>Invoice summary card</h2></div>
+      <div class="card-body">
+        <div class="form-grid" style="margin-bottom:16px;">
+          <div class="form-group"><label>Invoice number</label><input value="SL-2026-015"></div>
+          <div class="form-group"><label>Client</label><input placeholder="Client name and billing contact"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;"><label>Project</label><input placeholder="Project name"></div>
+        <div style="font-size:11px;font-weight:600;color:var(--dark-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Line items</div>
+        <div class="inv-line"><span>Product design — Homepage, Dashboard, Settings</span><span style="font-weight:600;">$4,000</span></div>
+        <div class="inv-line"><span>Design system — Component library</span><span style="font-weight:600;">$2,500</span></div>
+        <div class="inv-line"><span>Framer build — Deployment</span><span style="font-weight:600;">$1,500</span></div>
+        <div class="inv-total"><span>Total due</span><span>$8,000</span></div>
+        <div class="form-grid" style="margin-top:16px;">
+          <div class="form-group"><label>Due date</label><input type="date"></div>
+          <div class="form-group"><label>Status</label><select><option>Unpaid</option><option>Paid</option><option>Overdue</option></select></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOOLS ─── -->
+<div id="page-tools" class="page">
+  <div class="page-header"><h1>Tools & stack</h1><p>Studio tool inventory, access management, subscriptions, and resources. Owner: Maryam</p></div>
+
+  <div class="card">
+    <div class="card-header"><h2>Core tool stack <span class="badge badge-dark" style="margin-left:8px;">Both</span></h2><span style="font-size:13px;font-weight:600;">$170/mo total</span></div>
+    <div class="card-body" style="padding:8px 18px;">
+      <div class="tool-item"><div class="tool-logo">F</div><div><div class="tool-name">Figma</div><div class="tool-desc">Primary design tool — UI/UX design, prototyping, design systems · Organization plan</div></div><div><span class="badge badge-dark" style="margin-right:8px;">Both</span></div><div class="tool-cost">$75/mo</div></div>
+      <div class="tool-item"><div class="tool-logo" style="color:#0066FF;">Fr</div><div><div class="tool-name">Framer</div><div class="tool-desc">No-code website builder — client sites, landing pages, portfolios · Pro plan</div></div><div><span class="badge badge-gold" style="margin-right:8px;">Hauwa</span></div><div class="tool-cost">$30/mo</div></div>
+      <div class="tool-item"><div class="tool-logo">N</div><div><div class="tool-name">Notion</div><div class="tool-desc">Knowledge base, client-facing docs, internal wiki · Plus plan</div></div><div><span class="badge badge-dark" style="margin-right:8px;">Both</span></div><div class="tool-cost">$10/mo</div></div>
+      <div class="tool-item"><div class="tool-logo" style="color:#5E6AD2;">L</div><div><div class="tool-name">Linear</div><div class="tool-desc">Project management — task tracking, sprints, issue management · Standard plan</div></div><div><span class="badge badge-dark" style="margin-right:8px;">Both</span></div><div class="tool-cost">$16/mo</div></div>
+      <div class="tool-item"><div class="tool-logo" style="color:#4285F4;">G</div><div><div class="tool-name">Google Workspace</div><div class="tool-desc">Email, Drive, Docs, Sheets, Calendar · Business Starter</div></div><div><span class="badge badge-gray" style="margin-right:8px;">Maryam</span></div><div class="tool-cost">$14/mo</div></div>
+      <div class="tool-item"><div class="tool-logo" style="color:#3ECF8E;">S</div><div><div class="tool-name">Supabase</div><div class="tool-desc">Backend-as-a-service — database, auth, APIs for client projects · Pro plan</div></div><div><span class="badge badge-gray" style="margin-right:8px;">Maryam</span></div><div class="tool-cost">$25/mo</div></div>
+      <div class="tool-item"><div class="tool-logo">E</div><div><div class="tool-name">Expo</div><div class="tool-desc">React Native development — mobile app prototypes and builds</div></div><div><span class="badge badge-gray" style="margin-right:8px;">Maryam</span></div><div class="tool-cost">Free</div></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header"><h2>Community & practitioners</h2></div>
+      <div class="card-body" style="padding:8px 18px;">
+        <div class="tool-item"><div><div class="tool-name">Dribbble</div><div class="tool-desc">Design portfolio and community discovery</div></div></div>
+        <div class="tool-item"><div><div class="tool-name">ADPList</div><div class="tool-desc">Mentorship platform — giving and receiving design mentorship</div></div></div>
+        <div class="tool-item"><div><div class="tool-name">Indie Hackers</div><div class="tool-desc">Community for bootstrapped founders — studio growth</div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h2>References & reading</h2></div>
+      <div class="card-body" style="padding:8px 18px;">
+        <div class="tool-item"><div><div class="tool-name">Refactoring UI</div><div class="tool-desc">Practical visual design guide by Adam Wathan & Steve Schoger</div></div></div>
+        <div class="tool-item"><div><div class="tool-name">Design Systems — Alla Kholmatova</div><div class="tool-desc">Comprehensive guide to building and scaling design systems</div></div></div>
+        <div class="tool-item"><div><div class="tool-name">Shape Up — Basecamp</div><div class="tool-desc">Product development methodology — useful for project scoping</div></div></div>
+        <div class="tool-item"><div><div class="tool-name">Sprint — Jake Knapp</div><div class="tool-desc">5-day process for solving big problems — adaptable for clients</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Courses & learning</h2></div>
+    <div class="card-body" style="padding:8px 18px;">
+      <div class="tool-item"><div><div class="tool-name">Shift Nudge — Interface Design Course</div><div class="tool-desc">Comprehensive UI design course by MDS — visual design fundamentals</div></div></div>
+      <div class="tool-item"><div><div class="tool-name">Figma Academy</div><div class="tool-desc">Advanced Figma techniques, auto-layout mastery, variables, and prototyping</div></div></div>
+      <div class="tool-item"><div><div class="tool-name">Frontend Masters — React & TypeScript</div><div class="tool-desc">Staying sharp on development skills for Framer and Expo projects</div></div></div>
+      <div class="tool-item"><div><div class="tool-name">Prompt engineering for designers</div><div class="tool-desc">AI tools, prompt patterns, and integrating AI into design workflows</div></div></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main -->
+</div><!-- end app -->
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+const S = { leads:[], projects:[], invoices:[], ndas:[] };
+
+const setupItems = [
+  {label:'Business foundation',desc:'Name, legal, email, invoicing',icon:'🏢',bg:'#FAF5EB',status:'empty'},
+  {label:'Services defined',desc:'Scope, formats, turnaround',icon:'📋',bg:'#FAF5EB',status:'empty'},
+  {label:'Pricing locked',desc:'Rate card, packages, add-ons',icon:'💰',bg:'#FAF5EB',status:'done'},
+  {label:'Contracts ready',desc:'Client contract, NDA, retainer',icon:'📝',bg:'#FAF5EB',status:'done'},
+  {label:'Onboarding set',desc:'Intake form, kickoff process',icon:'🤝',bg:'#FAF5EB',status:'done'},
+  {label:'Brand identity',desc:'Logo, colours, type',icon:'🎨',bg:'#FAF5EB',status:'progress'},
+  {label:'Portfolio live',desc:'Case studies and site',icon:'🌐',bg:'#FAF5EB',status:'progress'},
+  {label:'Legal in order',desc:'Business registration',icon:'⚖️',bg:'#FAF5EB',status:'empty'},
+  {label:'Finance set up',desc:'Bank account, invoicing tool',icon:'🏦',bg:'#FAF5EB',status:'empty'},
+  {label:'Tools stack',desc:'All tools active and billed',icon:'🛠️',bg:'#FAF5EB',status:'done'},
+];
+
+const services = ['Product design','Design systems','Framer build','Shopify / WordPress','AI content & strategy','Retainer'];
+const leadStatuses = ['Cold','Warm','Proposal sent','Negotiating','Won','Lost'];
+const projStages = ['Kickoff','Discovery','Design','Development','Review','Handoff','Complete'];
+const members = ['Hauwa','Maryam','Both'];
+
+const contractItems = [
+  'Scope of work — detailed deliverables list with format specifications',
+  'Payment terms — deposit amount, milestone schedule, final payment trigger',
+  'IP ownership — transfer upon full payment receipt',
+  'Timeline — start date, milestone dates, final delivery date',
+  'Communication — designated point of contact, response time expectations',
+  'Confidentiality — mutual NDA clause or reference to separate NDA',
+  'Liability — limitation of liability, indemnification clause',
+  'Termination — conditions for early termination by either party',
+];
+
+const adminChecks = [
+  'Create project folder in Google Drive',
+  'Set up project in Linear with milestones',
+  'Create shared Slack channel (if applicable)',
+  'Add client to project management tool',
+  'Send welcome email with onboarding packet',
+];
+const projectChecks = [
+  'Create Figma project file from template',
+  'Set up design system instance (if applicable)',
+  'Schedule kickoff call',
+  'Share scope of work summary with client',
+  'Confirm payment — deposit received',
+];
+
+function go(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if(n.getAttribute('onclick') === `go('${id}')`) n.classList.add('active');
+  });
+  if(id==='home') refreshHome();
+}
+
+function switchTab(ns, id) {
+  const el = event.currentTarget || event.target;
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const prefix = ns + '-';
+  document.querySelectorAll(`[id^="${prefix}"]`).forEach(d => d.style.display='none');
+  document.getElementById(prefix+id).style.display='block';
+}
+
+function badge(s) {
+  const m = {Cold:'badge-gray',Warm:'badge-amber','Proposal sent':'badge-gold',Negotiating:'badge-gold',Won:'badge-green',Lost:'badge-red',Kickoff:'badge-gray',Discovery:'badge-gold',Design:'badge-gold',Development:'badge-amber',Review:'badge-amber',Handoff:'badge-green',Complete:'badge-green',Unpaid:'badge-amber',Paid:'badge-green',Overdue:'badge-red',Active:'badge-green',Pending:'badge-amber',Done:'badge-gray'};
+  return `<span class="badge ${m[s]||'badge-gray'}">${s}</span>`;
+}
+
+function openModal(type) {
+  const m = document.getElementById('modal-inner');
+  if(type==='lead') m.innerHTML = `<h3>Add new lead</h3>
+    <div class="form-grid"><div class="form-group"><label>Client name</label><input id="fi-name" placeholder="Acme Inc."></div><div class="form-group"><label>Contact email</label><input id="fi-email" placeholder="hello@acme.com"></div></div>
+    <div class="form-grid"><div class="form-group"><label>Service</label><select id="fi-service">${services.map(s=>`<option>${s}</option>`).join('')}</select></div><div class="form-group"><label>Estimated value</label><input id="fi-value" placeholder="$4,000"></div></div>
+    <div class="form-grid"><div class="form-group"><label>Status</label><select id="fi-status">${leadStatuses.map(s=>`<option>${s}</option>`).join('')}</select></div><div class="form-group"><label>Owner</label><select id="fi-owner">${members.map(m=>`<option>${m}</option>`).join('')}</select></div></div>
+    <div class="form-group" style="margin-bottom:12px;"><label>Notes</label><textarea id="fi-notes" placeholder="Any context..."></textarea></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveLead()">Save lead</button></div>`;
+  else if(type==='project') m.innerHTML = `<h3>Add new project</h3>
+    <div class="form-grid"><div class="form-group"><label>Client name</label><input id="fi-name" placeholder="Acme Inc."></div><div class="form-group"><label>Service</label><select id="fi-service">${services.map(s=>`<option>${s}</option>`).join('')}</select></div></div>
+    <div class="form-grid"><div class="form-group"><label>Budget</label><input id="fi-budget" placeholder="$4,000"></div><div class="form-group"><label>Deadline</label><input id="fi-deadline" type="date"></div></div>
+    <div class="form-grid"><div class="form-group"><label>Stage</label><select id="fi-stage">${projStages.map(s=>`<option>${s}</option>`).join('')}</select></div><div class="form-group"><label>Owner</label><select id="fi-owner">${members.map(m=>`<option>${m}</option>`).join('')}</select></div></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveProject()">Save project</button></div>`;
+  else if(type==='invoice') m.innerHTML = `<h3>Add invoice</h3>
+    <div class="form-grid"><div class="form-group"><label>Invoice #</label><input id="fi-num" placeholder="SL-2026-016"></div><div class="form-group"><label>Client</label><input id="fi-client" placeholder="Acme Inc."></div></div>
+    <div class="form-grid"><div class="form-group"><label>Amount</label><input id="fi-amount" placeholder="$4,000"></div><div class="form-group"><label>Status</label><select id="fi-status"><option>Unpaid</option><option>Paid</option><option>Overdue</option></select></div></div>
+    <div class="form-grid"><div class="form-group"><label>Sent date</label><input id="fi-sent" type="date"></div><div class="form-group"><label>Due date</label><input id="fi-due" type="date"></div></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveInvoice()">Save invoice</button></div>`;
+  else if(type==='expense') m.innerHTML = `<h3>Log expense</h3>
+    <div class="form-grid"><div class="form-group"><label>Description</label><input id="fi-desc" placeholder="Figma Pro subscription"></div><div class="form-group"><label>Category</label><select id="fi-cat"><option>Software</option><option>Marketing</option><option>Equipment</option><option>Professional dev</option><option>Other</option></select></div></div>
+    <div class="form-grid"><div class="form-group"><label>Amount</label><input id="fi-amount" placeholder="$30/mo"></div><div class="form-group"><label>Date</label><input id="fi-date" type="date"></div></div>
+    <div class="form-group" style="margin-bottom:12px;"><label>Paid by</label><select id="fi-paid">${members.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveExpense()">Save expense</button></div>`;
+  else if(type==='nda') m.innerHTML = `<h3>Add NDA record</h3>
+    <div class="form-grid"><div class="form-group"><label>Client name</label><input id="fi-name" placeholder="Client name"></div><div class="form-group"><label>Date signed</label><input id="fi-signed" type="date"></div></div>
+    <div class="form-grid"><div class="form-group"><label>Expiry date</label><input id="fi-expiry" type="date"></div><div class="form-group"><label>Status</label><select id="fi-status"><option>Active</option><option>Pending</option><option>Done</option></select></div></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNDA()">Save NDA</button></div>`;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal(e) { if(!e||e.target===document.getElementById('modal-bg')) document.getElementById('modal-bg').classList.remove('open'); }
+function g(id) { return document.getElementById(id)?.value||''; }
+
+function saveLead() { S.leads.push({name:g('fi-name'),email:g('fi-email'),service:g('fi-service'),value:g('fi-value'),status:g('fi-status'),owner:g('fi-owner'),notes:g('fi-notes')}); closeModal(); renderLeads(); refreshHome(); }
+function saveProject() { S.projects.push({name:g('fi-name'),service:g('fi-service'),budget:g('fi-budget'),deadline:g('fi-deadline'),stage:g('fi-stage'),owner:g('fi-owner')}); closeModal(); renderProjects(); refreshHome(); }
+function saveInvoice() { S.invoices.push({num:g('fi-num'),client:g('fi-client'),amount:g('fi-amount'),status:g('fi-status'),sent:g('fi-sent'),due:g('fi-due')}); closeModal(); renderInvoices(); refreshHome(); }
+function saveExpense() { closeModal(); }
+function saveNDA() { S.ndas.push({name:g('fi-name'),signed:g('fi-signed'),expiry:g('fi-expiry'),status:g('fi-status')}); closeModal(); renderNDAs(); }
+
+function del(arr,i,fn) { arr.splice(i,1); fn(); refreshHome(); }
+
+function renderLeads() {
+  const tb = document.getElementById('leads-tbody');
+  if(!S.leads.length){tb.innerHTML='<tr><td colspan="7" class="empty">No leads yet.</td></tr>';return;}
+  tb.innerHTML=S.leads.map((l,i)=>`<tr><td><div style="font-weight:600;">${l.name}</div><div style="font-size:11px;color:var(--dark-3);">${l.email}</div></td><td>${l.service}</td><td>${l.value}</td><td>${badge(l.status)}</td><td>${l.owner}</td><td style="max-width:160px;font-size:12px;color:var(--dark-3);">${l.notes}</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)" onclick="del(S.leads,${i},renderLeads)">Remove</button></td></tr>`).join('');
+}
+function renderProjects() {
+  const tb=document.getElementById('projects-tbody');
+  if(!S.projects.length){tb.innerHTML='<tr><td colspan="7" class="empty">No projects yet.</td></tr>';return;}
+  tb.innerHTML=S.projects.map((p,i)=>`<tr><td style="font-weight:600;">${p.name}</td><td>${p.service}</td><td>${p.budget}</td><td>${p.deadline}</td><td>${badge(p.stage)}</td><td>${p.owner}</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)" onclick="del(S.projects,${i},renderProjects)">Remove</button></td></tr>`).join('');
+}
+function renderInvoices() {
+  const tb=document.getElementById('invoices-tbody');
+  if(!S.invoices.length){tb.innerHTML='<tr><td colspan="7" class="empty">No invoices yet.</td></tr>';return;}
+  tb.innerHTML=S.invoices.map((inv,i)=>`<tr><td style="font-weight:600;">${inv.num}</td><td>${inv.client}</td><td>${inv.amount}</td><td>${inv.sent}</td><td>${inv.due}</td><td>${badge(inv.status)}</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)" onclick="del(S.invoices,${i},renderInvoices)">Remove</button></td></tr>`).join('');
+}
+function renderNDAs() {
+  const tb=document.getElementById('nda-tbody');
+  const extra=S.ndas.map((n,i)=>`<tr><td>${n.name}</td><td>${n.signed}</td><td>${n.expiry}</td><td>${badge(n.status)}</td><td><button class="btn btn-sm btn-ghost" style="color:var(--error)" onclick="S.ndas.splice(${i},1);renderNDAs()">Remove</button></td></tr>`).join('');
+  if(extra) tb.insertAdjacentHTML('beforeend',extra);
+}
+
+function refreshHome() {
+  document.getElementById('m-proj').textContent = S.projects.filter(p=>p.stage!=='Complete').length;
+  document.getElementById('m-leads').textContent = S.leads.filter(l=>!['Won','Lost'].includes(l.status)).length;
+  const unpaid = S.invoices.filter(i=>i.status==='Unpaid').reduce((s,i)=>s+parseFloat((i.amount||'0').replace(/[^\d.]/g,'')||0),0);
+  const rev = S.invoices.filter(i=>i.status==='Paid').reduce((s,i)=>s+parseFloat((i.amount||'0').replace(/[^\d.]/g,'')||0),0);
+  document.getElementById('m-unpaid').textContent='$'+unpaid.toLocaleString();
+  document.getElementById('m-rev').textContent='$'+rev.toLocaleString();
+  const hl=document.getElementById('hl-leads');
+  hl.innerHTML=S.leads.length?S.leads.slice(-4).reverse().map(l=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);"><span style="font-size:13px;font-weight:600;">${l.name}</span>${badge(l.status)}</div>`).join(''):'<div class="empty">No leads yet.</div>';
+  const hp=document.getElementById('hl-projects');
+  hp.innerHTML=S.projects.length?S.projects.slice(-4).reverse().map(p=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);"><span style="font-size:13px;font-weight:600;">${p.name}</span>${badge(p.stage)}</div>`).join(''):'<div class="empty">No projects yet.</div>';
+  const done=setupItems.filter(i=>i.status==='done').length;
+  const pct=Math.round((done/setupItems.length)*100);
+  document.getElementById('setup-bar').style.width=pct+'%';
+  document.getElementById('setup-pct').textContent=pct+'%';
+  document.getElementById('setup-label').textContent=`${done} of ${setupItems.length} complete`;
+}
+
+function renderSetup() {
+  document.getElementById('setup-grid').innerHTML=setupItems.map((s,i)=>`
+    <div class="setup-item">
+      <div class="setup-icon" style="background:${s.bg};">${s.icon}</div>
+      <div style="flex:1;"><div class="setup-title">${s.label}</div><div class="setup-desc">${s.desc}</div></div>
+      <select style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);color:var(--dark);cursor:pointer;" onchange="setupItems[${i}].status=this.value;refreshHome()">
+        <option value="empty" ${s.status==='empty'?'selected':''}>Not started</option>
+        <option value="progress" ${s.status==='progress'?'selected':''}>In progress</option>
+        <option value="done" ${s.status==='done'?'selected':''}>Done</option>
+      </select>
+    </div>`).join('');
+}
+
+function renderChecklists() {
+  const cc=document.getElementById('contract-checklist');
+  if(cc) cc.innerHTML=contractItems.map((c,i)=>`<div class="check-item"><input type="checkbox" id="cc${i}"><label for="cc${i}">${c}</label></div>`).join('');
+  const ac=document.getElementById('admin-checklist');
+  if(ac) ac.innerHTML=adminChecks.map((c,i)=>`<div class="check-item"><input type="checkbox" id="ac${i}"><label for="ac${i}">${c}</label></div>`).join('');
+  const pc=document.getElementById('project-checklist');
+  if(pc) pc.innerHTML=projectChecks.map((c,i)=>`<div class="check-item"><input type="checkbox" id="pc${i}"><label for="pc${i}">${c}</label></div>`).join('');
+}
+
+renderSetup();
+renderChecklists();
+refreshHome();
+</script>
+</body>
+</html>
